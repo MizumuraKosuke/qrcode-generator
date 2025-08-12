@@ -9,14 +9,17 @@ export default function Home() {
   const [size, setSize] = useState(400)
   const [copySuccess, setCopySuccess] = useState(false)
 
-  const { data, refetch, isLoading } = api.qr.generate.useQuery(
+  const queryInput = {
+    url,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    iconUrl: iconUrl || undefined,
+    size,
+  }
+
+  const { data, isLoading } = api.qr.generate.useQuery(
+    queryInput,
     {
-      url,
-      iconUrl: iconUrl || undefined,
-      size,
-    },
-    {
-      enabled: !!url && url.startsWith('http'),
+      enabled: !!url && url.startsWith('http') && url.length > 7,
     },
   )
 
@@ -97,6 +100,7 @@ export default function Home() {
 
         </div>
 
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         {(data || isLoading) && (
           <div className="flex w-full max-w-lg flex-col items-center gap-4">
             <div className="rounded-lg bg-white p-3 sm:p-4">

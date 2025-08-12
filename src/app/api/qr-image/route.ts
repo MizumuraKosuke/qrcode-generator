@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     const buffer = canvas.toBuffer('image/png')
 
-    return new NextResponse(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'image/png',
         'Cache-Control': 'public, max-age=31536000, immutable',

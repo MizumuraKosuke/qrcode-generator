@@ -11,7 +11,7 @@ export default function Home() {
 
   const queryInput = {
     url,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+     
     iconUrl: iconUrl || undefined,
     size,
   }
@@ -38,15 +38,15 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <div className="container flex flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-12 sm:py-16">
-        <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-[5rem]">
-          QR Code <span className="text-[hsl(280,100%,70%)]">Generator</span>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-300 to-teal-300 text-white relative">
+      <div className="container flex flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-12 sm:py-16 relative z-10">
+        <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-5xl lg:text-[5rem] text-white drop-shadow-lg">
+          QR Code <span className="text-orange-300 drop-shadow-lg">Generator</span>
         </h1>
 
         <div className="w-full max-w-md space-y-4">
           <div>
-            <label htmlFor="url" className="mb-2 block text-sm font-medium">
+            <label htmlFor="url" className="mb-2 block text-sm font-medium text-white drop-shadow">
               URL
             </label>
             <input
@@ -55,12 +55,12 @@ export default function Home() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com"
-              className="w-full rounded-lg border border-gray-300 bg-white/10 px-3 py-3 text-base text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none sm:py-2 sm:text-sm"
+              className="w-full rounded-lg border border-white/20 bg-white/95 backdrop-blur-sm px-3 py-3 text-base text-gray-800 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-400/50 focus:outline-none sm:py-2 sm:text-sm shadow-lg"
             />
           </div>
 
           <div>
-            <label htmlFor="iconUrl" className="mb-2 block text-sm font-medium">
+            <label htmlFor="iconUrl" className="mb-2 block text-sm font-medium text-white drop-shadow">
               Icon URL (Optional)
             </label>
             <div className="space-y-2">
@@ -70,12 +70,12 @@ export default function Home() {
                 value={iconUrl}
                 onChange={(e) => setIconUrl(e.target.value)}
                 placeholder="https://example.com/icon.png"
-                className="w-full rounded-lg border border-gray-300 bg-white/10 px-3 py-3 text-base text-white placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none sm:py-2 sm:text-sm"
+                className="w-full rounded-lg border border-white/20 bg-white/95 backdrop-blur-sm px-3 py-3 text-base text-gray-800 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-400/50 focus:outline-none sm:py-2 sm:text-sm shadow-lg"
               />
               <button
                 type="button"
                 onClick={() => setIconUrl('https://picsum.photos/200/300')}
-                className="text-xs text-purple-300 underline hover:text-purple-200"
+                className="text-xs underline hover:text-orange-200 drop-shadow"
               >
                 Use Test Image (picsum.photos)
               </button>
@@ -83,7 +83,7 @@ export default function Home() {
           </div>
 
           <div>
-            <label htmlFor="size" className="mb-2 block text-sm font-medium">
+            <label htmlFor="size" className="mb-2 block text-sm font-medium text-white drop-shadow">
               Size: {size}px
             </label>
             <input
@@ -94,7 +94,7 @@ export default function Home() {
               step="50"
               value={size}
               onChange={(e) => setSize(parseInt(e.target.value))}
-              className="w-full"
+              className="w-full rounded-lg bg-white/95 backdrop-blur-sm appearance-none h-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange"
             />
           </div>
 
@@ -103,11 +103,11 @@ export default function Home() {
         {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         {(data || isLoading) && (
           <div className="flex w-full max-w-lg flex-col items-center gap-4">
-            <div className="rounded-lg bg-white p-3 sm:p-4">
+            <div className="rounded-lg bg-white/95 backdrop-blur-sm shadow-2xl p-3 sm:p-4 border border-white/20">
               {isLoading ? (
                 <div className="flex h-64 w-64 flex-col items-center justify-center gap-3 sm:h-80 sm:w-80">
-                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600"></div>
-                  <span className="text-sm font-medium text-purple-600">
+                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-orange-500"></div>
+                  <span className="text-sm font-medium text-orange-600">
                     Loading QR...
                   </span>
                 </div>
@@ -129,19 +129,19 @@ export default function Home() {
             {data && !isLoading && (
               <div className="w-full space-y-4">
                 {/* Direct Image Link - Most prominent */}
-                <div className="rounded-lg border border-purple-400/30 bg-purple-600/20 p-3 sm:p-4">
-                <h3 className="mb-2 text-base font-semibold text-purple-300 sm:text-lg">
+                <div className="rounded-lg bg-white/95 backdrop-blur-sm p-3 sm:p-4 shadow-lg">
+                <h3 className="mb-2 text-base font-semibold text-orange-400 sm:text-lg">
                   🔗 Direct Image Link
                 </h3>
-                <p className="mb-3 text-xs text-gray-300 sm:text-sm">
+                <p className="mb-3 text-xs text-gray-700 sm:text-sm">
                   Use this URL anywhere to display the QR code:
                 </p>
-                <div className="rounded bg-black/30 p-2 font-mono text-xs break-all sm:p-3 sm:text-sm">
+                <div className="rounded bg-black/85 p-2 font-mono text-xs break-all sm:p-3 sm:text-sm shadow-inner">
                   <a
                     href={data.qrCode}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-purple-300 underline hover:text-purple-200"
+                    className="underline"
                   >
                     {window.location.origin}
                     {data.qrCode}
@@ -151,8 +151,8 @@ export default function Home() {
                   onClick={handleCopyLink}
                   className={`mt-3 w-full transform rounded-lg px-4 py-3 text-sm font-semibold text-white transition-all duration-200 sm:text-base ${
                     copySuccess
-                      ? 'scale-105 bg-green-600 hover:bg-green-700'
-                      : 'bg-purple-600 hover:scale-105 hover:bg-purple-700'
+                      ? 'scale-105 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:scale-105 hover:from-orange-600 hover:to-orange-700'
                   } shadow-lg hover:shadow-xl active:scale-95`}
                 >
                   {copySuccess ? (
@@ -165,19 +165,6 @@ export default function Home() {
                     </span>
                   )}
                 </button>
-                </div>
-
-                {/* Original URL */}
-                <div className="text-center">
-                  <span className="text-sm text-gray-400">QR code for: </span>
-                  <a
-                    href={data.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="break-all text-purple-400 underline hover:text-purple-300"
-                  >
-                    {data.url}
-                  </a>
                 </div>
               </div>
             )}

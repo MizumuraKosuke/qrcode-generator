@@ -81,48 +81,22 @@ async function generateQR(url: string, iconUrl?: string, iconData?: string, size
   return canvas.toBuffer('image/png')
 }
 
-export async function GET(req: NextRequest) {
+// In-memory cache for POST requests
+const postCache = new Map<string, { data: { url: string; iconUrl?: string; iconData?: string; size?: number }; timestamp: number }>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ hash: string }> }) {
   try {
-    const { searchParams } = new URL(req.url)
-    const url = searchParams.get('url')
-    const iconUrl = searchParams.get('icon')
-    const iconData = searchParams.get('iconData')
-    const size = parseInt(searchParams.get('size') ?? '400')
-
-    if (!url) {
-      return new Response('URL parameter is required', { status: 400 })
-    }
-
-    // Prevent iconData in GET requests to avoid 431 errors
-    if (iconData) {
-      return new Response('Icon data not allowed in GET request. Use POST instead.', { status: 413 })
-    }
-
-    const buffer = await generateQR(url, iconUrl ?? undefined, iconData ?? undefined, size)
-
-    return new Response(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-    })
-  } catch (e: unknown) {
-    console.log(`Failed to generate image: ${String(e)}`)
-    return NextResponse.json(
-      { error: 'Failed to generate image', details: String(e) },
-      { status: 500 },
-    )
-  }
-}
-
-export async function POST(_req: NextRequest) {
-  try {
-    const body = await _req.json() as { url: string; iconUrl?: string; iconData?: string; size?: number }
+    const { hash } = await params
+    const body = await req.json() as { url: string; iconUrl?: string; iconData?: string; size?: number }
     const { url, iconUrl, iconData, size = 400 } = body
 
     if (!url) {
       return new Response('URL parameter is required', { status: 400 })
     }
+
+    // Cache the request data
+    postCache.set(hash, { data: body, timestamp: Date.now() })
 
     const buffer = await generateQR(url, iconUrl, iconData, size)
 
@@ -141,3 +115,30 @@ export async function POST(_req: NextRequest) {
   }
 }
 
+export async function GET(req: NextRequest, { params }: { params: Promise<{ hash: string }> }) {
+  try {
+    const { hash } = await params
+    const cached = postCache.get(hash)
+
+    if (!cached || Date.now() - cached.timestamp > CACHE_DURATION) {
+      return new Response('Hash not found or expired', { status: 404 })
+    }
+
+    const { url, iconUrl, iconData, size = 400 } = cached.data
+
+    const buffer = await generateQR(url, iconUrl, iconData, size)
+
+    return new Response(new Uint8Array(buffer), {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    })
+  } catch (e: unknown) {
+    console.log(`Failed to generate image: ${String(e)}`)
+    return NextResponse.json(
+      { error: 'Failed to generate image', details: String(e) },
+      { status: 500 },
+    )
+  }
+}

@@ -1,34 +1,114 @@
 'use client'
 
-import { useState } from 'react'
-import { api } from '@/trpc/react'
+import { useState, useMemo, useEffect } from 'react'
+import Image from 'next/image'
+import { api } from '@/trpc/react' 
 
 export default function Home() {
   const [url, setUrl] = useState('')
   const [iconUrl, setIconUrl] = useState('')
+  const [iconFile, setIconFile] = useState<File | null>(null)
   const [size, setSize] = useState(400)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [iconData, setIconData] = useState<string | null>(null)
 
-  const queryInput = {
-    url,
-     
-    iconUrl: iconUrl || undefined,
-    size,
-  }
+  useEffect(() => {
+    if (iconFile) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        // Extract base64 data (remove data:image/...;base64, prefix)
+        const base64 = result.split(',')[1]
+        setIconData(base64 ?? null)
+      }
+      reader.readAsDataURL(iconFile)
+    } else {
+      setIconData(null)
+    }
+  }, [iconFile])
+
+  const isValidUrl = !!url && url.startsWith('http') && url.length > 7
+
+  const queryInput = useMemo(() => {
+    const input = {
+      url,
+      iconUrl: iconUrl || undefined,
+      iconData: iconData ?? undefined,
+      size,
+    }
+    return input
+  }, [url, iconUrl, iconData, size])
 
   const { data, isLoading } = api.qr.generate.useQuery(
     queryInput,
     {
-      enabled: !!url && url.startsWith('http') && url.length > 7,
+      enabled: isValidUrl && !iconData, // Skip tRPC when iconData exists
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
     },
   )
 
+  // Direct POST handling for iconData to avoid 431 errors
+  const [postData, setPostData] = useState<{
+    qrCode: string
+    url: string
+    iconData: string
+    size: number
+  } | null>(null)
+  const [postLoading, setPostLoading] = useState(false)
+
+  useEffect(() => {
+    if (isValidUrl && iconData) {
+      setPostLoading(true)
+      const directPost = async () => {
+        try {
+          // Generate simple hash for the request
+          const dataString = JSON.stringify({ url, iconData, size })
+          const hash = btoa(dataString).replace(/[+/=]/g, '').substring(0, 16)
+          
+          // First POST the data to cache it
+          await fetch(`/api/qr-image/post/${hash}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url,
+              iconData,
+              size,
+            }),
+          })
+          
+          // Then use the GET endpoint
+          setPostData({
+            qrCode: `/api/qr-image/post/${hash}`,
+            url,
+            iconData,
+            size,
+          })
+        } catch (error) {
+          console.error('Direct POST failed:', error)
+        } finally {
+          setPostLoading(false)
+        }
+      }
+      void directPost()
+    } else {
+      setPostData(null)
+      setPostLoading(false)
+    }
+  }, [url, iconData, size, isValidUrl])
+
+  // Use POST data when available, otherwise use tRPC data
+  const finalData = postData ?? data
+  const finalLoading = postLoading || isLoading
+
   const handleCopyLink = async () => {
-    if (!data) return
+    if (!finalData) return
 
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}${data.qrCode}`,
+        `${window.location.origin}${finalData.qrCode}`,
       )
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 2000)
@@ -61,24 +141,47 @@ export default function Home() {
 
           <div>
             <label htmlFor="iconUrl" className="mb-2 block text-sm font-medium text-white drop-shadow">
-              Icon URL (Optional)
+              Icon (Optional)
             </label>
             <div className="space-y-2">
               <input
                 id="iconUrl"
                 type="url"
                 value={iconUrl}
-                onChange={(e) => setIconUrl(e.target.value)}
+                onChange={(e) => {
+                  setIconUrl(e.target.value)
+                  setIconFile(null)
+                }}
                 placeholder="https://example.com/icon.png"
                 className="w-full rounded-lg border border-white/20 bg-white/95 backdrop-blur-sm px-3 py-3 text-base text-gray-800 placeholder-gray-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/50 focus:outline-none sm:py-2 sm:text-sm shadow-lg"
               />
               <button
                 type="button"
-                onClick={() => setIconUrl('https://picsum.photos/200/300')}
+                onClick={() => {
+                  setIconUrl('https://picsum.photos/seed/qr-test/200/300')
+                  setIconFile(null)
+                }}
                 className="text-xs underline drop-shadow"
               >
                 Use Test Image (picsum.photos)
               </button>
+              <div className="text-center text-white/80 text-sm">または</div>
+              <input
+                id="iconFile"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setIconFile(file)
+                  if (file) setIconUrl('')
+                }}
+                className="w-full rounded-lg border border-white/20 bg-white/95 backdrop-blur-sm px-3 py-3 text-base text-gray-800 placeholder-gray-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/50 focus:outline-none sm:py-2 sm:text-sm shadow-lg file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+              />
+              {iconFile && (
+                <div className="text-sm text-white/90 bg-white/10 rounded px-2 py-1">
+                  選択されたファイル: {iconFile.name}
+                </div>
+              )}
             </div>
           </div>
 
@@ -101,10 +204,10 @@ export default function Home() {
         </div>
 
         {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-        {(data || isLoading) && (
+        {(finalData || finalLoading) && (
           <div className="flex w-full max-w-lg flex-col items-center gap-4">
             <div className="rounded-lg bg-white/95 backdrop-blur-sm shadow-2xl p-3 sm:p-4 border border-white/20">
-              {isLoading ? (
+              {finalLoading ? (
                 <div className="flex h-64 w-64 flex-col items-center justify-center gap-3 sm:h-80 sm:w-80">
                   <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-amber-500"></div>
                   <span className="text-sm font-medium text-amber-600">
@@ -112,21 +215,19 @@ export default function Home() {
                   </span>
                 </div>
               ) : (
-                data && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={data.qrCode}
+                finalData && (
+                  <Image
+                    src={finalData.qrCode}
                     alt="QR Code"
+                    width={400}
+                    height={400}
                     className="h-auto w-full max-w-xs sm:max-w-sm"
-                    onError={(e) => {
-                      console.error('Failed to load QR image:', data.qrCode)
-                      e.currentTarget.style.display = 'none'
-                    }}
+                    unoptimized
                   />
                 )
               )}
             </div>
-            {data && !isLoading && (
+            {finalData && !finalLoading && (
               <div className="w-full space-y-4">
                 {/* Direct Image Link - Most prominent */}
                 <div className="rounded-lg bg-white/95 backdrop-blur-sm p-3 sm:p-4 shadow-lg">
@@ -136,15 +237,20 @@ export default function Home() {
                 <p className="mb-3 text-xs text-gray-700 sm:text-sm">
                   Use this URL anywhere to display the QR code:
                 </p>
-                <div className="rounded bg-black/85 p-2 font-mono text-xs break-all sm:p-3 sm:text-sm shadow-inner">
+                <div className="rounded bg-black/85 p-2 font-mono text-xs sm:p-3 sm:text-sm shadow-inner overflow-hidden">
                   <a
-                    href={data.qrCode}
+                    href={finalData.qrCode}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline"
+                    className="underline block leading-relaxed"
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}
                   >
-                    {window.location.origin}
-                    {data.qrCode}
+                    {window.location.origin}{finalData.qrCode}
                   </a>
                 </div>
                 <button
